@@ -73,7 +73,7 @@ my @MONTHS = (
 	'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
 	'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 );
-	
+
 foreach ( @ARGV )
 {
 	if ( m/^--help/ )			# --help
@@ -90,7 +90,7 @@ usage: $0 [options]
 --apache        logs are in Apache style
 --version       show version info
 
---help          show this listing 
+--help          show this listing
 EOF
 
 		exit 1;
@@ -158,8 +158,8 @@ if ( $logfile )
 # (b) something else is already listening on that. Is Apache running?
 #
 my $Socket = IO::Socket::INET->new(
-		LocalPort => $port,
-		Type      => SOCK_STREAM,
+		LocalPort => $port,								# Par défaut 80
+		Type      => SOCK_STREAM,					# TCP
 		Reuse     => 1,
 		Listen    => 1 );
 
@@ -212,7 +212,7 @@ while ( $client = $Socket->accept() )
 		print "  client ready to read, now reading\n"	if $Debug;
 
 		my $n = sysread($client, $request, 9999, $offset);
-		
+
 		if ( $Debug )
 		{
 			printf("  got read #%d of [%d]\n", $nreads, $n);

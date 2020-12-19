@@ -1,0 +1,7 @@
+Pour tester le script et envoyer des tentatives de connections, on utilise cette commande :
+
+echo -n "GET / HTTP/1.0\r\n\r\n" | nc host.example.com 80
+
+Sinon on peut écrire dans un fichier input.txt et executer la commande
+
+cat input.txt | nc host.example.com 80
