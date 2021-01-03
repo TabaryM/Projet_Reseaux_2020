@@ -37,6 +37,7 @@
 #include <memory.h>     // Contient l'inclusion de string.h (s'il n'est pas déjà inclus) et de features.h
 //include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
 #include <arpa/inet.h>
+#include <stdbool.h>
 
 // constantes :
 #define VERSION "1.04"
@@ -51,8 +52,7 @@ int apache = 0; // option --apache
 
 // Fonction qui renvoie un booléen selon si le string commence par le prefix.
 //(utilisée ici pour verifier les entrées utilisateur)
-_Bool starts_with(const char *restrict string, const char *restrict prefix)
-{
+_Bool starts_with(const char *restrict string, const char *restrict prefix) {
     while(*prefix)
     {
         if(*prefix++ != *string++)
@@ -108,14 +108,21 @@ int main (int argc, char *argv[]) {
   // ... but only if requested with --log=FILE
   //
   FILE* file;
+  bool mustLog = false;
+  char str_affiche[1024];
   if(strlen(logfile) > 0){
     file = fopen(logfile, "rb+");
     if(file == NULL){
         file = fopen(logfile, "wb");
     }
     //Ajoute la sortie standard dans le fichier de log.
-    file = freopen(logfile, "a+", stdout);
+    mustLog = true;
+    //file = freopen(logfile, "a+", stdout);
 
+    if(mustLog){
+      sprintf(str_affiche, "# Now listening on port %d\n",port);
+      fputs(str_affiche, file);
+    }
     printf("# Now listening on port %d\n",port);
     fflush(stdout);
   }
@@ -153,6 +160,11 @@ int main (int argc, char *argv[]) {
     return(-1);
   }
 
+  if(mustLog){
+    sprintf(str_affiche, "websnarf v%s listening on port %d (timeout=%d secs)\n"
+      ,VERSION, port, alarmtime);
+    fputs(str_affiche, file);
+  }
   printf("websnarf v%s listening on port %d (timeout=%d secs)\n",VERSION,port,alarmtime);
   fflush(stdout);
 
@@ -169,9 +181,24 @@ int main (int argc, char *argv[]) {
 
     getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
     getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
-    // TODO verifier que c'est correct
-    printf("ip serveur : %s\n", inet_ntoa(server_addr.sin_addr));
-    printf("ip client : %s\n", inet_ntoa(client_addr.sin_addr));
+    // TODO modifier le message pour qu'il affiche au même format que Perl
+    // Calcul du string a afficher
+    sprintf(str_affiche, "ip serveur : %s\n", inet_ntoa(server_addr.sin_addr));
+    if(mustLog){
+      // ajout du message dans le fichier
+      fputs(str_affiche, file);
+    }
+    // affichage du message dans le stdout
+    printf(str_affiche);
+
+    // Calcul du string a afficher
+    sprintf(str_affiche, "ip client : %s\n", inet_ntoa(client_addr.sin_addr));
+    if(mustLog){
+      // ajout du message dans le fichier
+      fputs(str_affiche, file);
+    }
+    // affichage du message dans le stdout
+    printf(str_affiche);
     fflush(stdout);
     // c'est l'equivalent de la ligne 186 du .pl
 
