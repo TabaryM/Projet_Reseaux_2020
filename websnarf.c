@@ -38,6 +38,7 @@
 //include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
 #include <arpa/inet.h>
 #include <stdbool.h>
+#include <time.h>
 
 // constantes :
 #define VERSION "1.04"
@@ -109,7 +110,7 @@ int main (int argc, char *argv[]) {
   //
   FILE* file;
   bool mustLog = false;
-  char str_affiche[1024];
+  char str_affiche[BUFSIZ];
   if(strlen(logfile) > 0){
     file = fopen(logfile, "rb+");
     if(file == NULL){
@@ -117,6 +118,7 @@ int main (int argc, char *argv[]) {
     }
     //Ajoute la sortie standard dans le fichier de log.
     mustLog = true;
+    file = fopen(logfile, "a+");
     //file = freopen(logfile, "a+", stdout);
 
     if(mustLog){
@@ -168,79 +170,63 @@ int main (int argc, char *argv[]) {
   printf("websnarf v%s listening on port %d (timeout=%d secs)\n",VERSION,port,alarmtime);
   fflush(stdout);
 
-  char msg [BUFSIZ];
+  time_t timestamp = time(NULL);
+  struct tm * pTime = localtime( & timestamp);
+
+  char our_ip [BUFSIZ];
+  char their_ip [BUFSIZ];
+  char time_request [BUFSIZ];
+
+  char request [BUFSIZ];
+
   struct sockaddr_in client_addr;
   socklen_t clen = sizeof(client_addr);
   struct sockaddr_in server_addr;
   socklen_t slen = sizeof(server_addr);
   while(1){
-
     listen (sock,5);
 
     newsockfd = accept (sock, (struct sockaddr *)&client_addr, &clen);
 
-    getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
-    getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
-    // TODO modifier le message pour qu'il affiche au même format que Perl
-    // Calcul du string a afficher
-    sprintf(str_affiche, "ip serveur : %s\n", inet_ntoa(server_addr.sin_addr));
-    if(mustLog){
-      // ajout du message dans le fichier
-      fputs(str_affiche, file);
-    }
-    // affichage du message dans le stdout
-    printf(str_affiche);
-
-    // Calcul du string a afficher
-    sprintf(str_affiche, "ip client : %s\n", inet_ntoa(client_addr.sin_addr));
-    if(mustLog){
-      // ajout du message dans le fichier
-      fputs(str_affiche, file);
-    }
-    // affichage du message dans le stdout
-    printf(str_affiche);
-    fflush(stdout);
-    // c'est l'equivalent de la ligne 186 du .pl
-
-    //----------------------------------------------------------------
-    // We immediately need to note who the local and remote IP addresses
-    // are, because once we start the read we may find that our socket
-    // gets closed by a timeout. Save them now for easier reference.
-    //
-
-/*
     if ( fork() == 0 ) {
       close ( sock );
-      // On lit le message envoy? par la socket de communication.
-    //  msg contiendra la chaine de caract?res envoy?e par le r?seau,
-      // s le code d'erreur de la fonction. -1 si pb et sinon c'est le nombre de caract?res lus
-      s = read(newsockfd, msg, 1024);
-      if (s == -1)
-        perror("Problemes");
-      else {
-        // Si le code d'erreur est bon, on affiche le message.
-        msg[s] = 0;
-        printf("Msg: %s\n", msg);
-        printf("Recept reussie, emission msg: ");
 
-        // On demande ? l'utilisateur de rentrer un message qui va ?tre exp?di? sur le r?seau
-        scanf(" %[^\n]", msg);
+      getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
+      getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
+      // TODO modifier le message pour qu'il affiche au même format que Perl
+      // Calcul du string de notre IP
+      sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
+      // Calcul du string de l'IP distante
+      sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
+      // Récupération de l'heure de la requête
+      strftime(time_request, BUFSIZ, "%d/%m %H:%M:%S", pTime );
 
-        // On va ?crire sur la socket, en testant le code d'erreur de la fonction write.
-        s = write(newsockfd, msg, strlen(msg));
-        if (s == -1) {
-          perror("Erreur write");
-          return(-1);
-        }
-        else
-          printf("Ecriture reussie, msg: %s\n", msg);
+      // récupération de la requête effectuée par le "client"
+      s = read(newsockfd, request, maxline);
+      fflush(stdout);
+      request[s] = 0;
+      sprintf(request, "%s", request);
+
+      sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, request);
+      if(mustLog){
+        // ajout du message dans le fichier
+        fputs(str_affiche, file);
       }
-*/
+      // affichage du message dans le stdout
+      printf(str_affiche);
+      fflush(stdout);
 
-      close ( newsockfd );
-      fclose(file); //TODO a enlever plus tard
-      exit (1); //TODO a enlever plus tard
+      // On attend autant de secondes que prévue avant de fermer la socket
+      sleep(alarmtime);
+      printf("\nFIN DE LA CONNECTION\n");
+      close (newsockfd);
+      exit(1);
+      //fclose(file); //TODO a enlever plus tard
+      //exit (1); //TODO a enlever plus tard
+    }
+    close(newsockfd);
+
   }
-
+  close(sock);
   return 0;
 }
