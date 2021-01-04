@@ -170,8 +170,8 @@ int main (int argc, char *argv[]) {
   printf("websnarf v%s listening on port %d (timeout=%d secs)\n",VERSION,port,alarmtime);
   fflush(stdout);
 
-  time_t timestamp = time(NULL);
-  struct tm * pTime = localtime( & timestamp);
+  time_t timestamp;
+  struct tm * pTime;
 
   char our_ip [BUFSIZ];
   char their_ip [BUFSIZ];
@@ -199,15 +199,18 @@ int main (int argc, char *argv[]) {
       // Calcul du string de l'IP distante
       sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
       // Récupération de l'heure de la requête
-      strftime(time_request, BUFSIZ, "%d/%m %H:%M:%S", pTime );
+      time(&timestamp);
+      pTime = localtime( & timestamp);
+      strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
 
       // récupération de la requête effectuée par le "client"
       s = read(newsockfd, request, maxline);
       fflush(stdout);
       request[s] = 0;
       sprintf(request, "%s", request);
+      char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
 
-      sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, request);
+      sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
       if(mustLog){
         // ajout du message dans le fichier
         fputs(str_affiche, file);
