@@ -39,6 +39,7 @@
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <time.h>
+#include <signal.h>
 
 // constantes :
 #define VERSION "1.04"
@@ -47,7 +48,7 @@ int debug = 0;
 char* logfile = "";
 int port = 80; //TCP seulement
 int alarmtime = 5; //secondes
-int maxline = 40; //longueur max d'une ligne
+int maxline = 666; //longueur max d'une ligne
 char* savedir = "";
 int apache = 0; // option --apache
 
@@ -150,9 +151,17 @@ int main (int argc, char *argv[]) {
 
   adresse.sin_port = htons(port);
 
+  struct timeval tv;
+  tv.tv_sec = alarmtime;
+  tv.tv_usec = 0;
+  //setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+
   adresse.sin_addr.s_addr=INADDR_ANY;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){
     perror("setsockopt(SO_REUSEADDR) failed");
+  }
+  if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)){
+    perror("setsockopt(SO_RCVTIMEO) failed");
   }
 
   retour = bind (sock,(struct sockaddr *)&adresse,sizeof(adresse));
@@ -183,32 +192,72 @@ int main (int argc, char *argv[]) {
   socklen_t clen = sizeof(client_addr);
   struct sockaddr_in server_addr;
   socklen_t slen = sizeof(server_addr);
+
   while(1){
     listen (sock,5);
 
     newsockfd = accept (sock, (struct sockaddr *)&client_addr, &clen);
 
+    getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
+    getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
+
+    // Calcul du string de notre IP
+    sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
+    // Calcul du string de l'IP distante
+    sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
+
+    if(debug){
+      if(mustLog){
+        sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
+        fputs(str_affiche, file);
+      }
+      printf("--> accepted connection from %s\n",their_ip);
+      fflush(stdout);
+    }
+
     if ( fork() == 0 ) {
       close ( sock );
 
-      getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
-      getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
-      // TODO modifier le message pour qu'il affiche au même format que Perl
-      // Calcul du string de notre IP
-      sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
-      // Calcul du string de l'IP distante
-      sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
+
+      // récupération de la requête effectuée par le "client"
+      s = read(newsockfd, request, maxline);
+
+      if (s == -1){
+        perror("Problemes de lecture");
+        kill(getppid(), SIGKILL);
+        exit(-1);
+      }
+
+      if(debug){
+        if(mustLog){
+          sprintf(str_affiche, "  client ready to read, now reading\n");
+          fputs(str_affiche, file);
+        }
+        printf("  client ready to read, now reading\n");
+        fflush(stdout);
+      }
+
+      request[s] = 0;
+      sprintf(request, "%s", request);
+
+      if(debug){
+        if(mustLog){
+          sprintf(str_affiche, "  got read #%d of [%ld]\n", 1,strlen(request) );
+          fputs(str_affiche, file);
+          sprintf(str_affiche, "[%s]\n",request);
+          fputs(str_affiche, file);
+        }
+        printf("  got read #%d of [%ld]\n", 1,strlen(request));
+        printf("[%s]\n",request);
+        fflush(stdout);
+      }
+
+      char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
+
       // Récupération de l'heure de la requête
       time(&timestamp);
       pTime = localtime( & timestamp);
       strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
-
-      // récupération de la requête effectuée par le "client"
-      s = read(newsockfd, request, maxline);
-      fflush(stdout);
-      request[s] = 0;
-      sprintf(request, "%s", request);
-      char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
 
       sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
       if(mustLog){
@@ -216,12 +265,9 @@ int main (int argc, char *argv[]) {
         fputs(str_affiche, file);
       }
       // affichage du message dans le stdout
-      printf(str_affiche);
+      printf("%s",str_affiche);
       fflush(stdout);
 
-      // On attend autant de secondes que prévue avant de fermer la socket
-      sleep(alarmtime);
-      printf("\nFIN DE LA CONNECTION\n");
       close (newsockfd);
       exit(1);
       //fclose(file); //TODO a enlever plus tard
