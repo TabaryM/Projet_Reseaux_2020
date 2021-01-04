@@ -151,17 +151,21 @@ int main (int argc, char *argv[]) {
 
   adresse.sin_port = htons(port);
 
-  struct timeval tv;
-  tv.tv_sec = alarmtime;
-  tv.tv_usec = 0;
-  //setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-
   adresse.sin_addr.s_addr=INADDR_ANY;
   if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){
     perror("setsockopt(SO_REUSEADDR) failed");
   }
+
+  struct timeval tv;
+  tv.tv_sec = alarmtime;
+  tv.tv_usec = 0;
+
   if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)){
     perror("setsockopt(SO_RCVTIMEO) failed");
+  }
+
+  if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv)){
+    perror("setsockopt(SO_SNDTIMEO) failed");
   }
 
   retour = bind (sock,(struct sockaddr *)&adresse,sizeof(adresse));
@@ -198,81 +202,88 @@ int main (int argc, char *argv[]) {
 
     newsockfd = accept(sock, (struct sockaddr *)&client_addr, &clen);
 
-    getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
-    getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
+    if(newsockfd != -1){
+      getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
+      getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
 
-    // Calcul du string de notre IP
-    sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
-    // Calcul du string de l'IP distante
-    sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
+      // Calcul du string de notre IP
+      sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
+      // Calcul du string de l'IP distante
+      sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
 
-    if(debug){
-      sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
-      if(mustLog){
-        fputs(str_affiche, file);
-      }
-      printf("%s",str_affiche);
-      fflush(stdout);
-    }
-
-    if ( fork() == 0 ) {
-      close ( sock );
-
-      // récupération de la requête effectuée par le "client"
-      s = read(newsockfd, request, maxline);
-
-      if (s == -1){
-        perror("Problemes de lecture");
-        kill(getppid(), SIGKILL);
-        exit(-1);
-      }
 
       if(debug){
+        sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
         if(mustLog){
-          sprintf(str_affiche, "  client ready to read, now reading\n");
           fputs(str_affiche, file);
         }
-        printf("  client ready to read, now reading\n");
+        printf("%s",str_affiche);
         fflush(stdout);
       }
 
-      request[s] = 0;
+      if ( fork() == 0 ) {
+        close ( sock );
 
-      if(debug){
-        if(mustLog){
-          sprintf(str_affiche, "  got read #%d of [%ld]\n", 1,strlen(request) );
-          fputs(str_affiche, file);
-          sprintf(str_affiche, "[%s]\n",request);
-          fputs(str_affiche, file);
-        }
-        printf("  got read #%d of [%ld]\n", 1,strlen(request));
-        printf("[%s]\n",request);
-        fflush(stdout);
+        time_t start, end;
+        double elapsed;
+        time(&start);
+        // récupération de la requête effectuée par le "client"
+        do {
+          time(&end);
+          elapsed = difftime(end, start);
+          s = read(newsockfd, request, maxline);
+
+          if(s >= 1){
+            if(debug){
+              if(mustLog){
+                sprintf(str_affiche, "  client ready to read, now reading\n");
+                fputs(str_affiche, file);
+              }
+              printf("  client ready to read, now reading\n");
+              fflush(stdout);
+            }
+
+            request[s] = 0;
+
+            if(debug){
+              if(mustLog){
+                sprintf(str_affiche, "  got read #%d of [%ld]\n", 1,strlen(request) );
+                fputs(str_affiche, file);
+                sprintf(str_affiche, "[%s]\n",request);
+                fputs(str_affiche, file);
+              }
+              printf("  got read #%d of [%ld]\n", 1,strlen(request));
+              printf("[%s]\n",request);
+              fflush(stdout);
+            }
+
+            char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
+
+            // Récupération de l'heure de la requête
+            time(&timestamp);
+            pTime = localtime( & timestamp);
+            strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
+
+            sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
+            if(mustLog){
+              // ajout du message dans le fichier
+              fputs(str_affiche, file);
+            }
+            // affichage du message dans le stdout
+            printf("%s",str_affiche);
+            fflush(stdout);
+          }
+        } while(s > 1 || elapsed < alarmtime);
+
+        // On a fini de lire la socket
+        close (newsockfd);
+        exit(1);
+
+        //fclose(file); //TODO a enlever plus tard
+        //exit (1); //TODO a enlever plus tard
       }
-
-      char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
-
-      // Récupération de l'heure de la requête
-      time(&timestamp);
-      pTime = localtime( & timestamp);
-      strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
-
-      sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
-      if(mustLog){
-        // ajout du message dans le fichier
-        fputs(str_affiche, file);
-      }
-      // affichage du message dans le stdout
-      printf("%s",str_affiche);
-      fflush(stdout);
-
-      close (newsockfd);
-      exit(1);
-      //fclose(file); //TODO a enlever plus tard
-      //exit (1); //TODO a enlever plus tard
+      close(newsockfd);
     }
-    close(newsockfd);
-
   }
   close(sock);
   return 0;
