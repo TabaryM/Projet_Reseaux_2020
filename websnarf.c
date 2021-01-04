@@ -196,7 +196,7 @@ int main (int argc, char *argv[]) {
   while(1){
     listen (sock,5);
 
-    newsockfd = accept (sock, (struct sockaddr *)&client_addr, &clen);
+    newsockfd = accept(sock, (struct sockaddr *)&client_addr, &clen);
 
     getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
     getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
@@ -207,17 +207,16 @@ int main (int argc, char *argv[]) {
     sprintf(their_ip, "%s", inet_ntoa(client_addr.sin_addr));
 
     if(debug){
+      sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
       if(mustLog){
-        sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
         fputs(str_affiche, file);
       }
-      printf("--> accepted connection from %s\n",their_ip);
+      printf("%s",str_affiche);
       fflush(stdout);
     }
 
     if ( fork() == 0 ) {
       close ( sock );
-
 
       // récupération de la requête effectuée par le "client"
       s = read(newsockfd, request, maxline);
@@ -238,7 +237,6 @@ int main (int argc, char *argv[]) {
       }
 
       request[s] = 0;
-      sprintf(request, "%s", request);
 
       if(debug){
         if(mustLog){
