@@ -41,6 +41,10 @@
 #include <time.h>
 #include <signal.h>
 
+
+#define _XOPEN_SOURCE_EXTENDED 1
+extern int h_errno;
+
 // constantes :
 #define VERSION "1.04"
 
@@ -209,6 +213,22 @@ int main (int argc, char *argv[]) {
       getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
 
       client_name = gethostbyaddr(&client_addr, sizeof(client_addr), AF_INET);
+      
+      switch(h_errno){
+        case HOST_NOT_FOUND:
+          printf("HOST_NOT_FOUND\n");
+          break;
+        case NO_DATA:
+          printf("NO_DATA\n");
+          break;
+        case NO_RECOVERY:
+          printf("NO_RECOVERY\n");
+          break;
+        case TRY_AGAIN:
+          printf("TRY_AGAIN\n");
+          break;
+      }
+      
       if(client_name == NULL){
         perror("ERREUR résolution de nom");
       } else {
