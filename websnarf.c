@@ -33,7 +33,7 @@ int main (int argc, char *argv[]) {
 
   int debug = 0;
   char* logfile = "";
-  //int port = 80; //TCP seulement
+  int port = 80; //TCP seulement
   int nbports = 1;
   int alarmtime = 5; //secondes
   int maxline = 666; //longueur max d'une ligne
@@ -87,7 +87,7 @@ int main (int argc, char *argv[]) {
   int newsockfd, sock, retour, s;
   struct sockaddr_in adresse;
 
-  sock = creersock (port);
+  sock = creersock (port, alarmtime);
 
   if (sock<0) {
     perror ("ERREUR OUVERTURE");

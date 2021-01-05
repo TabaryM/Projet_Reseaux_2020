@@ -28,7 +28,7 @@ _Bool starts_with(const char *restrict string, const char *restrict prefix) {
     return 1;
 }
 
-int creersock( u_short port) {
+int creersock(u_short port, int alarmtime) {
 
   // On cr?e deux variables enti?res
   int sock, retour;
