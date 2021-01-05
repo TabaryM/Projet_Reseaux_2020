@@ -196,15 +196,25 @@ int main (int argc, char *argv[]) {
   socklen_t clen = sizeof(client_addr);
   struct sockaddr_in server_addr;
   socklen_t slen = sizeof(server_addr);
+  struct hostent *client_name;
 
   while(1){
     listen (sock,5);
 
+    // Accepte une connexion TCP. Si après (alarmtime) secondes aucunes connexion n'est établie, retourne -1.
     newsockfd = accept(sock, (struct sockaddr *)&client_addr, &clen);
 
     if(newsockfd != -1){
       getsockname(newsockfd, (struct sockaddr *)&server_addr, &slen);
       getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
+
+      client_name = gethostbyaddr(&client_addr, sizeof(client_addr), AF_INET);
+      if(client_name == NULL){
+        perror("ERREUR résolution de nom");
+      } else {
+        printf("Client name : %s\n", client_name->h_name);
+      }
+
 
       // Calcul du string de notre IP
       sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
