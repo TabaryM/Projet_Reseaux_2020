@@ -1,4 +1,4 @@
-// COMMAND LINE
+/* COMMAND LINE
 // ------------
 //
 // --port=##	Listen on port ## instead of 80. This is mainly only
@@ -25,44 +25,9 @@
 // --apache      put logs in Apache format (should be the default)
 //
 // --version     show current version number
+*/
 
-#include <stdio.h>      // Fichier contenant les en-têtes des fonctions standard d'entrées/sorties
-#include <stdlib.h>     // Fichier contenant les en-têtes de fonctions standard telles que malloc()
-#include <string.h>     // Fichier contenant les en-têtes de fonctions standard de gestion de chaînes de caractères
-#include <unistd.h>     // Fichier d'en-têtes de fonctions de la norme POSIX (dont gestion des fichiers : write(), close(), ...)
-#include <sys/types.h>      // Fichier d'en-têtes contenant la définition de plusieurs types et de structures primitifs (système)
-#include <sys/socket.h>     // Fichier d'en-têtes des fonctions de gestion de sockets
-#include <netinet/in.h>     // Fichier contenant différentes macros et constantes facilitant l'utilisation du protocole IP
-#include <netdb.h>      // Fichier d'en-têtes contenant la définition de fonctions et de structures permettant d'obtenir des informations sur le réseau (gethostbyname(), struct hostent, ...)
-#include <memory.h>     // Contient l'inclusion de string.h (s'il n'est pas déjà inclus) et de features.h
-//include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
-#include <arpa/inet.h>
-#include <stdbool.h>
-#include <time.h>
-#include <signal.h>
-
-// constantes :
-#define VERSION "1.04"
-
-int debug = 0;
-char* logfile = "";
-int port = 80; //TCP seulement
-int alarmtime = 5; //secondes
-int maxline = 666; //longueur max d'une ligne
-char* savedir = "";
-int apache = 0; // option --apache
-
-// Fonction qui renvoie un booléen selon si le string commence par le prefix.
-//(utilisée ici pour verifier les entrées utilisateur)
-_Bool starts_with(const char *restrict string, const char *restrict prefix) {
-    while(*prefix)
-    {
-        if(*prefix++ != *string++)
-            return 0;
-    }
-
-    return 1;
-}
+#include "websnarf.h"
 
 int main (int argc, char *argv[]) {
 
@@ -105,6 +70,22 @@ int main (int argc, char *argv[]) {
   }
 
   // -----------------------------------------------------------------------
+  // Create the socket to listen on. It's a fatal error if we cannot listen
+  // on port 80, the most common reasons being (a) we're not root or
+  // (b) something else is already listening on that. Is Apache running?
+  //
+
+  int newsockfd, sock, retour, s;
+  struct sockaddr_in adresse;
+
+  sock = creersock (port);
+
+  if (sock<0) {
+    perror ("ERREUR OUVERTURE");
+    exit(-1);
+  }
+
+  // -----------------------------------------------------------------------
   // CREATE LOGFILE
   //
   // ... but only if requested with --log=FILE
@@ -117,70 +98,17 @@ int main (int argc, char *argv[]) {
     if(file == NULL){
         file = fopen(logfile, "wb");
     }
-    //Ajoute la sortie standard dans le fichier de log.
     mustLog = true;
     file = fopen(logfile, "a+");
-    //file = freopen(logfile, "a+", stdout);
 
-    if(mustLog){
-      sprintf(str_affiche, "# Now listening on port %d\n",port);
-      fputs(str_affiche, file);
-    }
-    printf("# Now listening on port %d\n",port);
+    sprintf(str_affiche, "# Now listening on port %d\n",port);
+    print_or_log(str_affiche, mustLog, file);
     fflush(stdout);
   }
 
-
-  // -----------------------------------------------------------------------
-  // Create the socket to listen on. It's a fatal error if we cannot listen
-  // on port 80, the most common reasons being (a) we're not root or
-  // (b) something else is already listening on that. Is Apache running?
-  //
-
-  int newsockfd, sock, retour, s;
-  struct sockaddr_in adresse;
-
-  sock = socket(AF_INET,SOCK_STREAM,0);
-
-  if (sock<0) {
-    perror ("ERREUR OUVERTURE");
-    exit(-1);
-  }
-
-  adresse.sin_family = AF_INET;
-
-  adresse.sin_port = htons(port);
-
-  adresse.sin_addr.s_addr=INADDR_ANY;
-  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0){
-    perror("setsockopt(SO_REUSEADDR) failed");
-  }
-
-  struct timeval tv;
-  tv.tv_sec = alarmtime;
-  tv.tv_usec = 0;
-
-  if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)){
-    perror("setsockopt(SO_RCVTIMEO) failed");
-  }
-
-  if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv)){
-    perror("setsockopt(SO_SNDTIMEO) failed");
-  }
-
-  retour = bind (sock,(struct sockaddr *)&adresse,sizeof(adresse));
-
-  if (retour<0) {
-    perror ("ERROR: cannot listen on port !\n");
-    return(-1);
-  }
-
-  if(mustLog){
-    sprintf(str_affiche, "websnarf v%s listening on port %d (timeout=%d secs)\n"
-      ,VERSION, port, alarmtime);
-    fputs(str_affiche, file);
-  }
-  printf("websnarf v%s listening on port %d (timeout=%d secs)\n",VERSION,port,alarmtime);
+  sprintf(str_affiche, "websnarf v%s listening on port %d (timeout=%d secs)\n"
+    ,VERSION, port, alarmtime);
+  print_or_log(str_affiche, mustLog, file);
   fflush(stdout);
 
   time_t timestamp;
@@ -209,12 +137,9 @@ int main (int argc, char *argv[]) {
       getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
 
       client_name = gethostbyaddr(&client_addr, sizeof(client_addr), AF_INET);
-      if(client_name == NULL){
-        perror("ERREUR résolution de nom");
-      } else {
+      if(client_name != NULL) {
         printf("Client name : %s\n", client_name->h_name);
       }
-
 
       // Calcul du string de notre IP
       sprintf(our_ip, "%s", inet_ntoa(server_addr.sin_addr));
@@ -224,10 +149,7 @@ int main (int argc, char *argv[]) {
 
       if(debug){
         sprintf(str_affiche, "--> accepted connection from %s\n",their_ip);
-        if(mustLog){
-          fputs(str_affiche, file);
-        }
-        printf("%s",str_affiche);
+        print_or_log(str_affiche, mustLog, file);
         fflush(stdout);
       }
 
@@ -245,25 +167,18 @@ int main (int argc, char *argv[]) {
 
           if(s >= 1){
             if(debug){
-              if(mustLog){
-                sprintf(str_affiche, "  client ready to read, now reading\n");
-                fputs(str_affiche, file);
-              }
-              printf("  client ready to read, now reading\n");
+              sprintf(str_affiche, "  client ready to read, now reading\n");
+              print_or_log(str_affiche, mustLog, file);
               fflush(stdout);
             }
 
             request[s] = 0;
 
             if(debug){
-              if(mustLog){
-                sprintf(str_affiche, "  got read #%d of [%ld]\n", 1,strlen(request) );
-                fputs(str_affiche, file);
-                sprintf(str_affiche, "[%s]\n",request);
-                fputs(str_affiche, file);
-              }
-              printf("  got read #%d of [%ld]\n", 1,strlen(request));
-              printf("[%s]\n",request);
+              sprintf(str_affiche, "  got read #%d of [%ld]\n", 1,strlen(request) );
+              print_or_log(str_affiche, mustLog, file);
+              sprintf(str_affiche, "[%s]\n",request);
+              print_or_log(str_affiche, mustLog, file);
               fflush(stdout);
             }
 
@@ -275,12 +190,7 @@ int main (int argc, char *argv[]) {
             strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
 
             sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
-            if(mustLog){
-              // ajout du message dans le fichier
-              fputs(str_affiche, file);
-            }
-            // affichage du message dans le stdout
-            printf("%s",str_affiche);
+            print_or_log(str_affiche, mustLog, file);
             fflush(stdout);
           }
         } while(s > 1 || elapsed < alarmtime);
