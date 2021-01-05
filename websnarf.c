@@ -31,6 +31,15 @@
 
 int main (int argc, char *argv[]) {
 
+  int debug = 0;
+  char* logfile = "";
+  //int port = 80; //TCP seulement
+  int nbports = 1;
+  int alarmtime = 5; //secondes
+  int maxline = 666; //longueur max d'une ligne
+  char* savedir = "";
+  int apache = 0; // option --apache
+
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
       if( starts_with(argv[i],"--help") ){ // --help
@@ -91,14 +100,14 @@ int main (int argc, char *argv[]) {
   // ... but only if requested with --log=FILE
   //
   FILE* file;
-  bool mustLog = false;
+  int mustLog = 0;
   char str_affiche[BUFSIZ];
   if(strlen(logfile) > 0){
     file = fopen(logfile, "rb+");
     if(file == NULL){
         file = fopen(logfile, "wb");
     }
-    mustLog = true;
+    mustLog = 1;
     file = fopen(logfile, "a+");
 
     sprintf(str_affiche, "# Now listening on port %d\n",port);

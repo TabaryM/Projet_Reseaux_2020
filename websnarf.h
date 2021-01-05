@@ -16,14 +16,6 @@
 // constantes :
 #define VERSION "1.04"
 
-int debug = 0;
-char* logfile = "";
-int port = 80; //TCP seulement
-int alarmtime = 5; //secondes
-int maxline = 666; //longueur max d'une ligne
-char* savedir = "";
-int apache = 0; // option --apache
-
 // Fonction qui renvoie un booléen selon si le string commence par le prefix.
 //(utilisée ici pour verifier les entrées utilisateur)
 _Bool starts_with(const char *restrict string, const char *restrict prefix) {
@@ -35,7 +27,6 @@ _Bool starts_with(const char *restrict string, const char *restrict prefix) {
 
     return 1;
 }
-
 
 int creersock( u_short port) {
 
@@ -116,7 +107,7 @@ int creersock( u_short port) {
   return (sock);
 }
 
-void print_or_log(char* message, bool mustLog, FILE* file){
+void print_or_log(char* message, int mustLog, FILE* file){
   if(mustLog) fputs(message, file);
   printf("%s", message);
 }
