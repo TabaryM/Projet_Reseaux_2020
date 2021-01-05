@@ -137,6 +137,7 @@ int main (int argc, char *argv[]) {
       getpeername(newsockfd, (struct sockaddr *)&client_addr, &clen);
 
       client_name = gethostbyaddr(&client_addr, sizeof(client_addr), AF_INET);
+
       if(client_name != NULL) {
         printf("Client name : %s\n", client_name->h_name);
       }
