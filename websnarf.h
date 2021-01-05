@@ -111,3 +111,7 @@ void print_or_log(char* message, int mustLog, FILE* file){
   if(mustLog) fputs(message, file);
   printf("%s", message);
 }
+
+char* get_param(char* str, char* to_cut){
+     return str + strlen(to_cut);
+}

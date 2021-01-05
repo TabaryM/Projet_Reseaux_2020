@@ -47,19 +47,19 @@ int main (int argc, char *argv[]) {
         exit(0);
       }
       else if( starts_with(argv[i],"--log=")  ){ // --log=FILE
-          logfile = strtok(argv[i],"--log=");
+          logfile = get_param(argv[i],"--log=");
       }
       else if( starts_with(argv[i],"--port=")  ){ // --port=##
-          port = atoi(strtok(argv[i],"--port="));
+          port = atoi(get_param(argv[i],"--port="));
       }
       else if( starts_with(argv[i],"--timeout=")  ){ // --timeout=##
-          alarmtime = atoi(strtok(argv[i],"--timeout="));
+          alarmtime = atoi(get_param(argv[i],"--timeout="));
       }
       else if( starts_with(argv[i],"--max=")  ){ // --max=##
-          maxline = atoi(strtok(argv[i],"--max="));
+          maxline = atoi(get_param(argv[i],"--max="));
       }
       else if( starts_with(argv[i],"--save=")  ){ // --save=DIR
-          savedir = strtok(argv[i],"--save=");
+          savedir = get_param(argv[i],"--save=");
       }
       else if( starts_with(argv[i],"--debug")  ){ // --debug
           debug = 1;
