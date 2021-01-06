@@ -16,7 +16,7 @@
 // constantes :
 #define VERSION "1.04"
 
-char time_request [BUFSIZ];
+char time_request [128];
 struct tm *pTime;
 
 // Fonction qui renvoie un booléen selon si le string commence par le prefix.
@@ -121,18 +121,24 @@ char* get_param(char* str, char* to_cut){
 
 void apache_display_log(char* their_ip, char* requete, char* string_to_log) {
   time_t timestamp;
-	time(&timestamp);
+  time(&timestamp);
   pTime = localtime( & timestamp);
-  strftime(time_request, BUFSIZ, "[%d/%b/%Y:%H:%M:%S -0000]", pTime);
+  strftime(time_request, 128, "[%d/%b/%Y:%H:%M:%S -0000]", pTime);
   sprintf(string_to_log, "%s - - %s \"%s\" 404 100\n",their_ip, time_request, requete);
-
 }
 
 void display_log(char* our_ip, char* their_ip, char* requete, char* string_to_log){
   time_t timestamp;
 	time(&timestamp);
   pTime = localtime( & timestamp);
-  strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
+  strftime(time_request, 128, "%m/%d %H:%M:%S", pTime );
   sprintf(string_to_log, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, requete);
+}
 
+void get_request(char request[], char* res){
+   int len;
+   const char delimiter[] = "\n";
+   len = strcspn(request, delimiter);
+
+   strncpy(res, request, len-(strlen(delimiter)-1));
 }

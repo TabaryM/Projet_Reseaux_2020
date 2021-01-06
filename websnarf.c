@@ -40,7 +40,6 @@ int main (int argc, char *argv[]) {
   char* savedir = "";
   int apache = 0; // option --apache
   int isDaemon = 0;
-  char string_to_log [1024];
 
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
@@ -111,6 +110,7 @@ int main (int argc, char *argv[]) {
   FILE* file;
   int mustLog = 0;
   char str_affiche[BUFSIZ];
+  char string_to_log[BUFSIZ];
   if(strlen(logfile) > 0){
     file = fopen(logfile, "rb+");
     if(file == NULL){
@@ -129,10 +129,11 @@ int main (int argc, char *argv[]) {
   print_or_log(str_affiche, mustLog, file);
   fflush(stdout);
 
-  char our_ip [BUFSIZ];
-  char their_ip [BUFSIZ];
+  char our_ip [512];
+  char their_ip [512];
+  char request [2048];
 
-  char request [BUFSIZ];
+  char printed_requete[512];
 
   struct sockaddr_in client_addr;
   socklen_t clen = sizeof(client_addr);
@@ -197,16 +198,14 @@ int main (int argc, char *argv[]) {
               fflush(stdout);
             }
 
-            char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
+            // On ne prend que la première ligne de la requete
+            get_request(request, printed_requete);
 
             // Récupération de l'heure de la requête
             if(apache){
-              apache_display_log(their_ip, req, string_to_log);
-              //sprintf(str_affiche,"%s", apache_display_log(their_ip, req));
-            }
-            else{
-              //sprintf(str_affiche,"%s", display_log(our_ip, their_ip, req));
-              display_log(our_ip, their_ip, req, string_to_log);
+              apache_display_log(their_ip, printed_requete, string_to_log);
+            } else{
+              display_log(our_ip, their_ip, printed_requete, string_to_log);
             }
             sprintf(str_affiche,"%s", string_to_log);
             print_or_log(str_affiche, mustLog, file);
