@@ -18,10 +18,6 @@
 //		ones are quite large. We don't care to record much more
 //		than one line's worth.
 //
-// --save=DIR	save /all/ headers into separate files in DIR. This is not
-//		a very good mechanism (but was easy to implement). It fills
-//		up a directory quickly: don't use --save=.  !
-//
 // --apache      put logs in Apache format (should be the default)
 //
 // --version     show current version number
@@ -34,10 +30,8 @@ int main (int argc, char *argv[]) {
   int debug = 0;
   char* logfile = "";
   int port = 80; //TCP seulement
-  int nbports = 1;
   int alarmtime = 5; //secondes
   int maxline = 666; //longueur max d'une ligne
-  char* savedir = "";
   int apache = 0; // option --apache
   int iis = 0; // option --iis
   int isDaemon = 0;
@@ -45,7 +39,7 @@ int main (int argc, char *argv[]) {
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
       if( starts_with(argv[i],"--help") ){ // --help
-        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--save=DIR      save all incoming headers into DIR\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--iis        logs are in IIS style\n\t--daemon\trun the program as daemon(in the same directory)\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
+        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--iis\t\tlogs are in IIS style\n\t--daemon\trun the program as daemon(in the same directory)\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
         exit(0);
       }
       else if( starts_with(argv[i],"--log=")  ){ // --log=FILE
@@ -59,9 +53,6 @@ int main (int argc, char *argv[]) {
       }
       else if( starts_with(argv[i],"--max=")  ){ // --max=##
           maxline = atoi(get_param(argv[i],"--max="));
-      }
-      else if( starts_with(argv[i],"--save=")  ){ // --save=DIR
-          savedir = get_param(argv[i],"--save=");
       }
       else if( starts_with(argv[i],"--debug")  ){ // --debug
           debug = 1;
@@ -101,8 +92,7 @@ int main (int argc, char *argv[]) {
   // (b) something else is already listening on that. Is Apache running?
   //
 
-  int newsockfd, sock, retour, s;
-  struct sockaddr_in adresse;
+  int newsockfd, sock, s;
 
   sock = creersock (port, alarmtime);
 
