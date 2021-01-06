@@ -40,6 +40,7 @@ int main (int argc, char *argv[]) {
   char* savedir = "";
   int apache = 0; // option --apache
   int isDaemon = 0;
+  char string_to_log [1024];
 
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
@@ -128,12 +129,8 @@ int main (int argc, char *argv[]) {
   print_or_log(str_affiche, mustLog, file);
   fflush(stdout);
 
-  time_t timestamp;
-  struct tm * pTime;
-
   char our_ip [BUFSIZ];
   char their_ip [BUFSIZ];
-  char time_request [BUFSIZ];
 
   char request [BUFSIZ];
 
@@ -203,11 +200,15 @@ int main (int argc, char *argv[]) {
             char* req = strtok(request, "\n"); // ne recupere que l'url de la requete
 
             // Récupération de l'heure de la requête
-            time(&timestamp);
-            pTime = localtime( & timestamp);
-            strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
-
-            sprintf(str_affiche, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, req);
+            if(apache){
+              apache_display_log(their_ip, req, string_to_log);
+              //sprintf(str_affiche,"%s", apache_display_log(their_ip, req));
+            }
+            else{
+              //sprintf(str_affiche,"%s", display_log(our_ip, their_ip, req));
+              display_log(our_ip, their_ip, req, string_to_log);
+            }
+            sprintf(str_affiche,"%s", string_to_log);
             print_or_log(str_affiche, mustLog, file);
             fflush(stdout);
           }

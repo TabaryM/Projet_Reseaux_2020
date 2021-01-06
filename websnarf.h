@@ -7,7 +7,7 @@
 #include <netinet/in.h>     // Fichier contenant différentes macros et constantes facilitant l'utilisation du protocole IP
 #include <netdb.h>      // Fichier d'en-têtes contenant la définition de fonctions et de structures permettant d'obtenir des informations sur le réseau (gethostbyname(), struct hostent, ...)
 #include <memory.h>     // Contient l'inclusion de string.h (s'il n'est pas déjà inclus) et de features.h
-#include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
+//include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <time.h>
@@ -15,6 +15,9 @@
 
 // constantes :
 #define VERSION "1.04"
+
+char time_request [BUFSIZ];
+struct tm *pTime;
 
 // Fonction qui renvoie un booléen selon si le string commence par le prefix.
 //(utilisée ici pour verifier les entrées utilisateur)
@@ -114,4 +117,22 @@ void print_or_log(char* message, int mustLog, FILE* file){
 
 char* get_param(char* str, char* to_cut){
      return str + strlen(to_cut);
+}
+
+void apache_display_log(char* their_ip, char* requete, char* string_to_log) {
+  time_t timestamp;
+	time(&timestamp);
+  pTime = localtime( & timestamp);
+  strftime(time_request, BUFSIZ, "[%d/%b/%Y:%H:%M:%S -0000]", pTime);
+  sprintf(string_to_log, "%s - - %s \"%s\" 404 100\n",their_ip, time_request, requete);
+
+}
+
+void display_log(char* our_ip, char* their_ip, char* requete, char* string_to_log){
+  time_t timestamp;
+	time(&timestamp);
+  pTime = localtime( & timestamp);
+  strftime(time_request, BUFSIZ, "%m/%d %H:%M:%S", pTime );
+  sprintf(string_to_log, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, requete);
+
 }
