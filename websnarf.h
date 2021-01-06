@@ -7,7 +7,7 @@
 #include <netinet/in.h>     // Fichier contenant différentes macros et constantes facilitant l'utilisation du protocole IP
 #include <netdb.h>      // Fichier d'en-têtes contenant la définition de fonctions et de structures permettant d'obtenir des informations sur le réseau (gethostbyname(), struct hostent, ...)
 #include <memory.h>     // Contient l'inclusion de string.h (s'il n'est pas déjà inclus) et de features.h
-//include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
+#include <errno.h>      // Fichier d'en-têtes pour la gestion des erreurs (notamment perror())
 #include <arpa/inet.h>
 #include <stdbool.h>
 #include <time.h>

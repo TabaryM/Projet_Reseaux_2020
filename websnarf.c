@@ -39,11 +39,12 @@ int main (int argc, char *argv[]) {
   int maxline = 666; //longueur max d'une ligne
   char* savedir = "";
   int apache = 0; // option --apache
+  int isDaemon = 0;
 
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
       if( starts_with(argv[i],"--help") ){ // --help
-        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--save=DIR      save all incoming headers into DIR\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
+        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--save=DIR      save all incoming headers into DIR\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--daemon\trun the program as daemon(in the same directory)\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
         exit(0);
       }
       else if( starts_with(argv[i],"--log=")  ){ // --log=FILE
@@ -67,6 +68,9 @@ int main (int argc, char *argv[]) {
       else if( starts_with(argv[i],"--apache")  ){ // --apache
           apache = 1;
       }
+      else if( starts_with(argv[i],"--daemon")  ){ // --daemon
+          isDaemon = 1;
+      }
       else if( starts_with(argv[i],"--version")  ){ // --version
           printf("websnarf v%s -- http://www.unixwiz.net/tools/websnarf.html\n",VERSION);
           exit(0);
@@ -76,6 +80,10 @@ int main (int argc, char *argv[]) {
         exit(-1);
       }
     }
+  }
+
+  if(isDaemon){
+    daemon(1, 0);
   }
 
   // -----------------------------------------------------------------------
