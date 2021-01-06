@@ -26,6 +26,10 @@
 #include "websnarf.h"
 
 int main (int argc, char *argv[]) {
+  for(int i = 0; i < argc; i++){
+    printf("param num %d : %s\t", i, argv[i]);
+  }
+  printf("\n");
 
   int debug = 0;
   char* logfile = "";
@@ -35,6 +39,9 @@ int main (int argc, char *argv[]) {
   int apache = 0; // option --apache
   int iis = 0; // option --iis
   int isDaemon = 0;
+  int isMultiPort = 0;
+  int nbPorts = 1;
+  int* ports_tab;
 
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
@@ -47,6 +54,14 @@ int main (int argc, char *argv[]) {
       }
       else if( starts_with(argv[i],"--port=")  ){ // --port=##
           port = atoi(get_param(argv[i],"--port="));
+      }
+      else if( starts_with(argv[i],"--multiport=")  ){ // --multiport=##,...,##
+          isMultiPort = 1;
+          char* str_ports = get_param(argv[i],"--multiport=");
+          for(int j = 1; j < strlen(str_ports); j++){
+            if(str_ports[j] == 44) nbPorts++; // 44 : code ASCII de la virgule (séparateur des numéros de ports)
+          }
+          ports_tab = getPorts(str_ports, nbPorts);
       }
       else if( starts_with(argv[i],"--timeout=")  ){ // --timeout=##
           alarmtime = atoi(get_param(argv[i],"--timeout="));
@@ -71,8 +86,13 @@ int main (int argc, char *argv[]) {
           exit(0);
       }
       else{
-        printf("Erreur : tapez --help pour afficher l'aide.\n");
-        exit(-1);
+        if(! starts_with(argv[0],"websnarf")  ){
+          printf("Erreur : tapez --help pour afficher l'aide.\n");
+          exit(-1);
+        } else {
+          // On est dans un fils
+          printf("On est dans le fils : %s\n",argv[0]);
+        }
       }
     }
   }
@@ -80,6 +100,56 @@ int main (int argc, char *argv[]) {
   if(iis == 1 && apache == 1){
     perror("Format de log IIS et apache incompatibles");
     exit(-1);
+  }
+
+  if(isMultiPort){
+    // TODO : faire un string par paramètre, même si le paramètre n'est pas utilisé.
+    int ret[nbPorts];
+    char process_name[20];
+    char param_unique[1024];
+    char parametres[1024];
+    char str_port_param[20];
+    int j;
+    int status = 0;
+    // Pour chaque port, on créer un fils a port unique
+    for(int i = 0; i < nbPorts; i++){
+      // Copie des parametres
+      for(j = 1; j < argc; j++){
+        if(! starts_with(argv[j],"--multiport=")){
+          strcpy(param_unique, argv[j]);
+          printf("param_unique : %s\n",param_unique);
+          strcat(parametres, param_unique);
+        }
+      }
+      // Ajout du port a la liste des paramètres
+      sprintf(process_name,"websnarf_%d",ports_tab[i]);
+      sprintf(str_port_param, "--port=%d\n",ports_tab[i]);
+
+      strcat(parametres, str_port_param);
+      printf("parametres : %s\n", parametres);
+      fflush(stdout);
+
+      // Création du fils
+      switch (ret[i] = fork()) {
+        case(pid_t) -1 :
+                        perror("création impossible");
+                        exit(-1);
+                        break;
+        case(pid_t) 0 : // On est dans le fils
+                        // La ligne ci-dessous permet de vérifier (entre autres) que les numéros de pipe sont bien disctinct pour chaques fils
+                        //printf("read_tube : %s\twrite_tube : %s\tfichier_finale : %s\ttaille_enetete : %s\tidFils : %s\n", read_tube, write_tube, fichier_finale, taille_entete, idFils);
+                        execl("./websnarf", process_name, parametres, NULL);
+                        perror("execl fail");
+                        exit(-1);
+                        break;
+
+        default : // On est dans le pere
+                        for(int i = 0; i < nbPorts; i++){
+                          waitpid(ret[i], &status, 0);
+                        }
+                        exit(1);
+      }
+    }
   }
 
   if(isDaemon){
@@ -123,8 +193,7 @@ int main (int argc, char *argv[]) {
     fflush(stdout);
   }
 
-  sprintf(str_affiche, "websnarf v%s listening on port %d (timeout=%d secs)\n"
-    ,VERSION, port, alarmtime);
+  sprintf(str_affiche, "%s v%s listening on port %d (timeout=%d secs)\n", argv[0], VERSION, port, alarmtime);
   print_or_log(str_affiche, mustLog, file);
   fflush(stdout);
 

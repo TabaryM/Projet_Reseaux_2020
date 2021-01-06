@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 // constantes :
 #define VERSION "1.04"
@@ -169,11 +170,26 @@ void iis_display_log(char* our_ip, char* their_ip, char* requete, char* string_t
   sprintf(string_to_log, "%s %s - %s %s %s %s - 404 100 100 0 %s %s - -\n", time_request, their_ip, server_name, our_ip, method, target_resource, protocol_version, user_agent);
 }
 
-
 void get_request(char request[], char* res){
    int len;
    const char delimiter[] = "\n";
    len = strcspn(request, delimiter);
 
    strncpy(res, request, len-(strlen(delimiter)-1));
+}
+
+int* getPorts(char* argvi, int nbPorts){
+  char* token;
+  const char coma[2] = ",";
+  int* res = malloc(/*sizeof(int) * */nbPorts);
+
+  int i = 0;
+  token = strtok(argvi, coma);
+  while(token != NULL){
+    res[i] = atoi(token);
+    token = strtok(NULL, coma);
+    i++;
+  }
+
+  return res;
 }
