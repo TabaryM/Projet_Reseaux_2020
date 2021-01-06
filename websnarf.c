@@ -39,12 +39,13 @@ int main (int argc, char *argv[]) {
   int maxline = 666; //longueur max d'une ligne
   char* savedir = "";
   int apache = 0; // option --apache
+  int iis = 0; // option --iis
   int isDaemon = 0;
 
   if(argc > 1){ // cas ou il y'a des paramètres saisis.
     for(int i=1; i<argc; i++){
       if( starts_with(argv[i],"--help") ){ // --help
-        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--save=DIR      save all incoming headers into DIR\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--daemon\trun the program as daemon(in the same directory)\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
+        printf("usage: %s [options]\n\n\t--timeout=<n>   wait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE      append output to FILE (default stdout only)\n\t--port=<n>      listen on TCP port <n> (default $port/tcp)\n\t--max=<n>       save at most <n> chars of request (default $maxline chars)\n\t--save=DIR      save all incoming headers into DIR\n\t--debug         turn on a bit of debugging (mainly for developers)\n\t--apache        logs are in Apache style\n\t--iis        logs are in IIS style\n\t--daemon\trun the program as daemon(in the same directory)\n\t--version       show version info\n\n\t--help          show this listing\n",__FILE__);
         exit(0);
       }
       else if( starts_with(argv[i],"--log=")  ){ // --log=FILE
@@ -68,6 +69,9 @@ int main (int argc, char *argv[]) {
       else if( starts_with(argv[i],"--apache")  ){ // --apache
           apache = 1;
       }
+      else if( starts_with(argv[i],"--iis")  ){ // --iis
+          iis = 1;
+      }
       else if( starts_with(argv[i],"--daemon")  ){ // --daemon
           isDaemon = 1;
       }
@@ -80,6 +84,11 @@ int main (int argc, char *argv[]) {
         exit(-1);
       }
     }
+  }
+
+  if(iis == 1 && apache == 1){
+    perror("Format de log IIS et apache incompatibles");
+    exit(-1);
   }
 
   if(isDaemon){
@@ -199,12 +208,16 @@ int main (int argc, char *argv[]) {
             }
 
             // On ne prend que la première ligne de la requete
-            get_request(request, printed_requete);
+            if(!iis){
+              get_request(request, printed_requete);
+            }
 
             // Récupération de l'heure de la requête
-            if(apache){
+            if(apache) {
               apache_display_log(their_ip, printed_requete, string_to_log);
-            } else{
+            } else if(iis) {
+              iis_display_log(our_ip, their_ip, printed_requete, string_to_log);
+            } else {
               display_log(our_ip, their_ip, printed_requete, string_to_log);
             }
             sprintf(str_affiche,"%s", string_to_log);

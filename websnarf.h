@@ -135,6 +135,41 @@ void display_log(char* our_ip, char* their_ip, char* requete, char* string_to_lo
   sprintf(string_to_log, "%s %s \t-> %s \t: %s\n", time_request, our_ip, their_ip, requete);
 }
 
+void iis_display_log(char* our_ip, char* their_ip, char* requete, char* string_to_log){
+  char time_request [128];
+  struct tm *pTime;
+  time_t timestamp;
+  time(&timestamp);
+  pTime = localtime( & timestamp);
+  strftime(time_request, 128, "%D %H:%M:%S", pTime);
+
+  char* server_name = "server_name";
+  char method[64];
+  char target_resource[512];
+  char protocol_version[64];
+  char new_req[1024];
+  char* delim = " ";
+  int len_req;
+  int len;
+  strcpy(new_req, requete);
+  for (int i = 0; i < 3; i++){
+    len_req = strlen(new_req);
+    len = strcspn(new_req, delim);
+    if (strlen(method) <= 0){
+        strncpy(method, new_req, len);
+    }else if (strlen(target_resource) <= 0){
+        strncpy(target_resource, new_req, len);
+    }else{
+        strncpy(protocol_version, new_req, len);
+    }
+    strncpy(new_req, new_req + len+1, len_req - len);
+  }
+
+  char* user_agent = "Mozilla";
+  sprintf(string_to_log, "%s %s - %s %s %s %s - 404 100 100 0 %s %s - -\n", time_request, their_ip, server_name, our_ip, method, target_resource, protocol_version, user_agent);
+}
+
+
 void get_request(char request[], char* res){
    int len;
    const char delimiter[] = "\n";
