@@ -259,7 +259,6 @@ int main (int argc, char *argv[]) {
           perror("fork du processus d'écoute d'un client échoué");
           exit(-1);
         case(pid_t) 0 :
-          printf("On est dans le fils %d\n",getpid());
           close ( sock );
 
           time_t start, end;
