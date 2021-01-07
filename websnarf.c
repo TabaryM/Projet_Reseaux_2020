@@ -30,6 +30,7 @@ int main (int argc, char *argv[]) {
   int debug = 0;
   char* logfile = "";
   int logbyport = 0;
+  int mustLog = 0;
   int port = 80; //TCP seulement
   int alarmtime = 5; //secondes
   int maxline = 666; //longueur max d'une ligne
@@ -44,10 +45,12 @@ int main (int argc, char *argv[]) {
     for(int i=1; i<argc; i++){
       if( starts_with(argv[i],"--help") ){ // --help
         printf("usage: %s [options]\n\n\t--timeout=<n>\twait at most <n> seconds on a read (default $alarmtime)\n\t--log=FILE\tappend output to FILE\n\t--port=<n>\tlisten on TCP port <n> (default $port/tcp)\n\t--multiport=<n>,...,<n>\tlisten on all the TCP port listed between ','. For each port, a new ./websnarf is executed with --port. ! If used with --daemon remember to kill all children when you want to stop the program !\n\t--max=<n>\tsave at most <n> chars of request (default $maxline chars)\n\t--debug\t\tturn on a bit of debugging (mainly for developers)\n\t--apache\tlogs are in Apache style\n\t--iis\t\tlogs are in IIS style\n\t--daemon\trun the program as daemon(in the same directory) ! If used with --multiport you will have to kill all children one by one !\n\t--version\tshow version info\n\n\t--help\tshow this listing\n",__FILE__);
+        fflush(stdout);
         exit(0);
       }
       else if( starts_with(argv[i],"--log=")  ){ // --log=FILE
           logfile = get_param(argv[i],"--log=");
+          mustLog = 1;
       }
       else if( starts_with(argv[i],"--logbyport")  ){ // --log=FILE_port
           logbyport = 1;
@@ -83,11 +86,13 @@ int main (int argc, char *argv[]) {
       }
       else if( starts_with(argv[i],"--version")  ){ // --version
           printf("websnarf v%s -- http://www.unixwiz.net/tools/websnarf.html\n",VERSION);
+          fflush(stdout);
           exit(0);
       }
       else{
         if(! starts_with(argv[0],"websnarf")  ){
           printf("Erreur : tapez --help pour afficher l'aide.\n");
+          fflush(stdout);
           exit(-1);
         }
       }
@@ -96,7 +101,15 @@ int main (int argc, char *argv[]) {
 
   if(iis == 1 && apache == 1){
     perror("Format de log IIS et apache incompatibles");
+    fflush(stdout);
     exit(-1);
+  }
+
+  if(logbyport){
+    if(!mustLog){
+      printf("L'option --logbyport est inutile si l'option --log n'est pas utilisée\n");
+      fflush(stdout);
+    }
   }
 
   int status = 0;
@@ -111,12 +124,13 @@ int main (int argc, char *argv[]) {
     for(int i = 0; i < nbPorts; i++){
       // Copie des parametres
       sprintf(process_name,"websnarf_%d",ports_tab[i]);
-      sprintf(str_port_param, "--port=%d\n",ports_tab[i]);
-      strcpy(parametres[0], str_port_param);
       // Ajout du port a la liste des paramètres
       for(j = 1; j < argc; j++){
         if(! starts_with(argv[j],"--multiport=")){
           strcpy(parametres[j], argv[j]);
+        } else {
+          sprintf(str_port_param, "--port=%d\n",ports_tab[i]);
+          strcpy(parametres[0], str_port_param);
         }
       }
 
@@ -162,6 +176,7 @@ int main (int argc, char *argv[]) {
 
   if (sock<0) {
     perror ("ERREUR OUVERTURE");
+    fflush(stdout);
     exit(-1);
   }
 
@@ -171,7 +186,6 @@ int main (int argc, char *argv[]) {
   // ... but only if requested with --log=FILE
   //
   FILE* file;
-  int mustLog = 0;
   char str_affiche[BUFSIZ];
   char string_to_log[BUFSIZ];
   char append_port_to_log[16];
@@ -184,11 +198,7 @@ int main (int argc, char *argv[]) {
     if(file == NULL){
         file = fopen(logfile, "wb");
     }
-    mustLog = 1;
     file = fopen(logfile, "a+");
-    if(file == NULL){
-      printf("Il se passe quelque chose\n");
-    }
 
     sprintf(str_affiche, "# Now listening on port %d, and logging in %s\n",port, logfile);
     print_or_log(str_affiche, mustLog, file);
